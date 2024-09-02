@@ -1,2 +1,2 @@
 # TcpGateway
-Gateway for Data Transmission(TCP) Protocol Secure Tunneling C++ Utility
+Gateway for Data Transmission(TCP) Protocol with encrypted payload Secure Tunneling C++ Utility
