@@ -1,3 +1,9 @@
+/**
+ *
+ * Unix Gateway for Tcp Protocol v0.0.1
+ *
+ */
+
 #pragma once
 
 // check os and architecture
@@ -37,6 +43,7 @@
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <sys/types.h>
 
 // global version macro identifies library version
@@ -90,16 +97,19 @@ typedef struct alignas(void *)
     };
 } local_encoding;
 
-typedef struct alignas(void*) 
+typedef struct alignas(void *)
 {
-  __string payload_headers{};
-  __string raw_bytes{};
-  __uint64 block_size{};
-} TcpPayloadRequest;
+    __string payload_headers{};
+    __string raw_bytes{};
+    __uint64 block_size{};
+} TcpIntercept;
+
+typedef struct alignas(void*) {
+  __socket sock{};
+  bool state{};
+} ClientTcpConnection;
 
 local_encoding __local_enc;
-
-
 
 class Socket
 {
@@ -120,44 +130,61 @@ class Socket
   public: // public member functions
     Socket() = delete;
 
-    __attribute__((cold, optimize(1))) inline static void Init(void) noexcept;
+    __attribute__((cold)) inline static void Init(void) noexcept;
 
-    __attribute__((cold, optimize(3))) static void Open(const __stringview _address, const __uint16 _port);
+    __attribute__((cold)) static void CreateTcpServer(const __uint16 _port);
 
-    __attribute__((hot, access(read_only, 1), optimize(3))) inline static __socket Accept(__socket *__restrict__ _sock);
+    __attribute__((cold)) static void CreateTcpServer(const __stringview _address, const __uint16 _port);
 
-    __attribute__((hot, access(read_only, 1), optimize(3))) inline static bool Send(const __stringview _buffer) noexcept;
+    __attribute__((cold)) inline static bool SyncConnect(const __stringview _address, const __uint16 _port);
 
-    __attribute__((hot, access(read_only, 1), optimize(3))) inline static bool Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept;
+    __attribute__((cold)) inline static const ClientTcpConnection SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw);
 
-    __attribute__((hot, access(read_only, 1), optimize(3))) inline static TcpPayloadRequest Receive(__socket *__restrict__ _sock);
+    __attribute__((hot, access(read_only, 1))) inline static __socket SyncAccept(__socket *__restrict__ _sock);
 
-    __attribute__((const, warn_unused_result, optimize(3))) inline static __socket *GetSocket(void) noexcept;
+    __attribute__((hot)) inline static bool Send(const __stringview _buffer) noexcept;
 
-    __attribute__((cold, optimize(3))) inline static void Close(__socket __restrict__ *_sock) noexcept;
+    __attribute__((hot, access(read_only, 1))) inline static bool Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept;
 
-    __attribute__((cold, zero_call_used_regs("all"), optimize(3))) inline static void GarbageCollectorExecute(void) noexcept;
+    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept Read(__socket *__restrict__ _sock);
 
-    __attribute__((cold, optimize(0))) inline static void SetVerbose(const bool verbose) noexcept;
+    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, TcpIntercept& dest_obj);
+
+    __attribute__((const, warn_unused_result)) inline static __socket *GetSocket(void) noexcept;
+
+    __attribute__((cold)) inline static void Close(__socket __restrict__ *_sock) noexcept;
+
+    __attribute__((cold, zero_call_used_regs("all"))) inline static void GarbageCollectorExecute(void) noexcept;
+
+    __attribute__((cold)) inline static void SetVerbose(const bool verbose) noexcept;
 
     __attribute__((cold)) inline static void SetMaxConnections(const __uint64 max) noexcept;
 
-    template <typename... MT> __attribute__((hot, optimize(2))) inline static void Log(MT... msgs) noexcept;
+    template <typename... MT> __attribute__((hot)) inline static void Log(MT... msgs) noexcept;
+
+    __attribute__((hot)) inline static bool CanAcceptTcp(void) noexcept;
 
     ~Socket();
 
   protected: // protected member functions
+
+    __attribute__((cold)) inline static bool __SyncConnect(const __stringview &_address, const __uint16& _port, bool& _r);
+
+    __attribute__((cold)) inline static void __SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw, TcpInitializer::ClientTcpConnection& _r);
+
+    __attribute__((hot, access(read_only, 1))) inline static bool __SyncAccept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest);
+
     __attribute__((cold, warn_unused_result, pure, nothrow)) static const bool _AddressValidate(const __stringview _address, const __uint16 _port);
 
     __attribute__((cold, nothrow)) static void _ExceptionHandle(const __stringview error) noexcept;
 
     __attribute__((hot, const, warn_unused_result)) static const __string _ErrorMsgCombine(const __stringview _token) noexcept;
 
-    __attribute__((cold, optimize(3))) inline static bool _TcpBind(void);
+    __attribute__((cold, )) inline static bool _TcpBind(void);
 
-    __attribute__((cold, optimize(3))) inline static bool _TcpListen(void);
+    __attribute__((cold, )) inline static bool _TcpListen(void);
 
-    __attribute__((cold, optimize(2))) inline static void _AddressReuse(void);
+    __attribute__((cold)) inline static void _AddressReuse(void);
 };
 }; // namespace TcpInitializer
 
@@ -167,7 +194,7 @@ class Socket
 
 #endif
 
-std::unique_ptr<TcpInitializer::__socket> TcpInitializer::Socket::_socket = std::make_unique<TcpInitializer::__socket>(0);
+std::unique_ptr<TcpInitializer::__socket> TcpInitializer::Socket::_socket = std::make_unique<TcpInitializer::__socket>(-1);
 
 std::unique_ptr<struct sockaddr_in> TcpInitializer::Socket::_sock_address = std::make_unique<struct sockaddr_in>();
 
