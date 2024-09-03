@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <mutex>
 #include <string_view>
 #include <thread>
 #include <type_traits>
@@ -97,7 +98,6 @@ typedef struct alignas(void *)
 
 typedef struct alignas(void *)
 {
-    __string payload_headers{};
     __string raw_bytes{};
     __uint64 block_size{};
 } TcpIntercept;
@@ -121,6 +121,8 @@ class Socket
     static __uint64 _tcp_count;
     static __uint64 _buffer_max;
     static TcpState _tcp_state;
+    static std::mutex _mtx;
+    
 
   public: // public member variables
     static bool verbose;
@@ -179,7 +181,9 @@ class Socket
 
     __attribute__((cold, warn_unused_result)) inline static const bool IsConnected(void) noexcept;
 
+    __attribute__((cold, warn_unused_result, access(read_only, 1))) inline static bool SocketState(const __socket *__restrict__ _sock);
 
+    
     ~Socket();
 
   protected: // protected member functions
@@ -199,6 +203,8 @@ class Socket
     __attribute__((cold, )) inline static bool _TcpListen(void);
 
     __attribute__((cold)) inline static void _AddressReuse(void);
+
+    __attribute__((hot)) inline static void _AccessGuard(void) noexcept;
 };
 }; // namespace TcpInitializer
 
@@ -225,3 +231,5 @@ TcpInitializer::__uint64 TcpInitializer::Socket::_tcp_count = 0;
 TcpInitializer::__uint64 TcpInitializer::Socket::_buffer_max = DEFAULT_BUFFER_MAX_SIZE;
 
 TcpInitializer::TcpState TcpInitializer::Socket::_tcp_state = TcpInitializer::TcpState::NONE;
+
+std::mutex TcpInitializer::Socket::_mtx = std::mutex();
