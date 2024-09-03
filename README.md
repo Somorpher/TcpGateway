@@ -2,7 +2,7 @@
 ### Overview
 
 
-[![MIT License](https://img.shields.io/badge/License-MIT-orange.svg)](https://github.com/Somorpher/Diskrypt/blob/main/LICENSE) 
+[![MIT License](https://img.shields.io/badge/License-MIT-orange.svg)](https://github.com/Somorpher/TcpGateway/blob/main/LICENSE) 
 
 The library provides a robust and easy-to-use interface for creating and managing TCP socket connections in C++. It is designed to facilitate both server and client functionalities, allowing developers to establish connections, send and receive data, and handle multiple connections efficiently. This library abstracts the complexities of socket programming, making it accessible for both novice and experienced developers.
 Features
