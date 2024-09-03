@@ -1,16 +1,10 @@
-# TcpInitializer: A C++ TCP Socket Library
+# TcpGateway: A C++ TCP Socket Library
 ### Overview
 
-The TcpInitializer library provides a robust and easy-to-use interface for creating and managing TCP socket connections in C++. It is designed to facilitate both server and client functionalities, allowing developers to establish connections, send and receive data, and handle multiple connections efficiently. This library abstracts the complexities of socket programming, making it accessible for both novice and experienced developers.
+The library provides a robust and easy-to-use interface for creating and managing TCP socket connections in C++. It is designed to facilitate both server and client functionalities, allowing developers to establish connections, send and receive data, and handle multiple connections efficiently. This library abstracts the complexities of socket programming, making it accessible for both novice and experienced developers.
 Features
 
-Socket Initialization: Easily initialize TCP sockets for both client and server applications.
-    Server Functionality: Create a TCP server that listens for incoming connections on a specified address and port.
-    Client Functionality: Connect to a remote TCP server using its address and port.
-    Data Transmission: Send and receive data over established TCP connections.
-    Connection Management: Handle multiple connections with built-in support for connection limits and state management.
-    Error Handling: Comprehensive error handling with descriptive messages for easier debugging.
-    Thread Safety: Utilizes threads to manage connections and data transmission, ensuring that operations do not block the main execution flow.
+Simplifies TCP socket programming by providing an intuitive interface for creating and managing both client and server connections. Key features include socket initialization, server creation, client connection, data transmission, and error handling. It supports multiple connections with configurable limits, ensures thread safety, and offers methods for checking connection status and managing socket states.
 
 ### Installation
 
