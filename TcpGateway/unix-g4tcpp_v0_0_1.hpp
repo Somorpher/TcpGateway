@@ -7,12 +7,10 @@
 #pragma once
 
 // check os and architecture
-#if defined(__linux__) || defined(__gnu_linux__) || defined(__APPLE__) || defined(__MACH__) || defined(__unix__) || defined(__unix) ||               \
-    defined(__ANDROID__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__gnu_linux__) || defined(__APPLE__) || defined(__MACH__) || defined(__unix__) || defined(__unix) || defined(__ANDROID__) || defined(__FreeBSD__)
 
 // architecture detections
-#if defined(__x86_64__) || defined(__MX64) || defined(__aarch64__) || defined(__powerpc__) || defined(__sparc__) || defined(__mips__) ||             \
-    defined(__riscv)
+#if defined(__x86_64__) || defined(__MX64) || defined(__aarch64__) || defined(__powerpc__) || defined(__sparc__) || defined(__mips__) || defined(__riscv)
 
 // library inclusion
 #include <algorithm>
@@ -40,10 +38,10 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <fcntl.h>
 #include <sys/types.h>
 
 // global version macro identifies library version
@@ -104,9 +102,10 @@ typedef struct alignas(void *)
     __uint64 block_size{};
 } TcpIntercept;
 
-typedef struct alignas(void*) {
-  __socket sock{};
-  bool state{};
+typedef struct alignas(void *)
+{
+    __socket sock{};
+    bool state{};
 } ClientTcpConnection;
 
 local_encoding __local_enc;
@@ -146,9 +145,19 @@ class Socket
 
     __attribute__((hot, access(read_only, 1))) inline static bool Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept;
 
-    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept Read(__socket *__restrict__ _sock);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static TcpIntercept SyncRead(void);
 
-    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, TcpIntercept& dest_obj);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string SyncStrRead(void);
+
+     __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string SyncStrRead(__socket *__restrict__ _sock);
+
+    __attribute__((hot)) inline static void SyncRead(__string& sink_frame);
+
+    __attribute__((hot, access(read_only, 1))) inline static void SyncRead(__socket *__restrict__ _sock, __string& sink_frame);
+
+    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept SyncRead(__socket *__restrict__ _sock);
+
+    __attribute__((hot, access(read_only, 1))) inline static void SyncRead(__socket *__restrict__ _sock, TcpIntercept &dest_obj);
 
     __attribute__((const, warn_unused_result)) inline static __socket *GetSocket(void) noexcept;
 
@@ -164,13 +173,16 @@ class Socket
 
     __attribute__((hot)) inline static bool CanAcceptTcp(void) noexcept;
 
+    __attribute__((cold, const, warn_unused_result)) inline static const decltype(TcpInitializer::Socket::_tcp_count) &GetSessionCount(void) noexcept;
+
+    __attribute__((cold, warn_unused_result)) inline static const bool IsConnected(void) noexcept;
+
     ~Socket();
 
   protected: // protected member functions
-
-    __attribute__((cold)) inline static bool __SyncConnect(const __stringview &_address, const __uint16& _port, bool& _r);
-
-    __attribute__((cold)) inline static void __SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw, TcpInitializer::ClientTcpConnection& _r);
+    //__attribute__((cold)) inline static void __SyncConnect(const __stringview &_address, const __uint16 &_port, bool &_r);
+    
+    template <typename rT> __attribute__((cold)) inline static void __SyncConnect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw = false);
 
     __attribute__((hot, access(read_only, 1))) inline static bool __SyncAccept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest);
 
