@@ -36,7 +36,7 @@ void TcpInitializer::Socket::TcpServer(const __stringview _address, const __uint
         __self__::_ip_address = _address;
         __self__::_port = _port;
 
-        if (__self__::_socket.get() == nullptr || *__self__::_socket <= 0)
+        if (__self__::_socket.get() == nullptr || *__self__::_socket < 0)
         {
             throw std::runtime_error(__self__::_ErrorMsgCombine("Socket failure"));
         }
@@ -168,7 +168,6 @@ TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(__socket *__restrict__
             {
                 tcp_request.raw_bytes = tcp_buffer;
                 tcp_request.block_size = tcp_request.raw_bytes.length();
-                tcp_request.payload_headers = "header-section";
             }
         }
     }).join();
@@ -183,6 +182,7 @@ void TcpInitializer::Socket::Read(__socket *__restrict__ _sock, TcpInitializer::
 
 __socket *TcpInitializer::Socket::GetSocket(void) noexcept
 {
+    __self__::_AccessGuard();
     return __self__::_socket.get();
 };
 
@@ -194,7 +194,9 @@ void TcpInitializer::Socket::Close(__socket __restrict__ *_sock) noexcept
 
 void TcpInitializer::Socket::GarbageCollectorExecute(void) noexcept
 {
+    __self__::_AccessGuard();
     __local_enc.free();
+    
     __self__::Close(__self__::_socket.get());
     __self__::_socket = nullptr;
 };
@@ -209,10 +211,12 @@ void TcpInitializer::Socket::SetMaxConnections(const __uint64 max) noexcept
 
 template <typename rT> void TcpInitializer::Socket::_Connect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw)
 {
+    __self__::_AccessGuard();
     if (!__self__::_AddressValidate(_address, _port) && _throw)
     {
         throw std::runtime_error(__self__::_ErrorMsgCombine("Conn Addr Eval failure"));
     }
+    
     if (__self__::_socket == nullptr || *__self__::_socket <= 0)
     {
         __self__::_socket = std::make_unique<__socket>(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
@@ -245,7 +249,7 @@ template <typename rT> void TcpInitializer::Socket::_Connect(const __stringview 
 
 bool TcpInitializer::Socket::_Accept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest)
 {
-    if (__self__::_socket != nullptr && *__self__::_socket > 0)
+    if (__self__::SocketState(_sock))
     {
         socklen_t addr_len(sizeof(*__self__::_sock_address));
         if (__self__::_tcp_count <= __self__::_accept_max)
@@ -259,7 +263,8 @@ bool TcpInitializer::Socket::_Accept(__socket *__restrict__ _sock, __socket *__r
 
 bool TcpInitializer::Socket::_TcpBind(void)
 {
-    if (__self__::_socket != nullptr && *__self__::_socket > 0)
+    __self__::_AccessGuard();
+    if (__self__::SocketState(__self__::_socket.get()))
     {
         memset(__self__::_sock_address.get(), 0, sizeof(struct sockaddr_in));
         __self__::_sock_address->sin_port = htons(__self__::_port);
@@ -274,7 +279,8 @@ bool TcpInitializer::Socket::_TcpBind(void)
 
 bool TcpInitializer::Socket::_TcpListen(void)
 {
-    if (__self__::_socket != nullptr)
+    __self__::_AccessGuard();
+    if (__self__::SocketState(__self__::_socket.get()))
     {
         return listen(*__self__::_socket, __self__::_accept_max) == 0;
     }
@@ -319,6 +325,7 @@ template <typename... MT> void TcpInitializer::Socket::Log(MT... msgs) noexcept
 
 void TcpInitializer::Socket::_AddressReuse(void)
 {
+    __self__::_AccessGuard();
     if (__self__::_socket != nullptr && *__self__::_socket > 0)
     {
         int opt_value(1);
@@ -332,7 +339,7 @@ void TcpInitializer::Socket::_AddressReuse(void)
 
 bool TcpInitializer::Socket::CanAcceptTcp(void) noexcept
 {
-    return __self__::_tcp_count < __self__::_accept_max;
+    return __self__::_tcp_count < __self__::_accept_max && __self__::SocketState(__self__::_socket.get());
 };
 
 const __uint64 &TcpInitializer::Socket::GetSessionCount(void) noexcept
@@ -345,6 +352,22 @@ const bool TcpInitializer::Socket::IsConnected(void) noexcept
     return __self__::_tcp_state == TcpState::CONNECTED && __self__::_socket != nullptr && *__self__::_socket > 0;
 };
 
+bool TcpInitializer::Socket::SocketState(const __socket *__restrict__ _sock)
+{
+    if(_sock == nullptr||*_sock<0) return false;
+    int sock_state_val;
+    socklen_t optlen(sizeof(sock_state_val));
+    if (getsockopt(*_sock, SOL_SOCKET, SO_ERROR, &sock_state_val, &optlen) < 0)
+    {
+        return false;
+    }
+
+    return sock_state_val == 0;
+};
+
+void TcpInitializer::Socket::_AccessGuard(void) noexcept {
+    std::unique_lock<decltype(__self__::_mtx)> Lock(__self__::_mtx);
+};
 
 TcpInitializer::Socket::~Socket()
 {
