@@ -131,33 +131,35 @@ class Socket
 
     __attribute__((cold)) inline static void Init(void) noexcept;
 
-    __attribute__((cold)) static void CreateTcpServer(const __uint16 _port);
+    __attribute__((cold)) static void TcpServer(const __uint16 _port);
 
-    __attribute__((cold)) static void CreateTcpServer(const __stringview _address, const __uint16 _port);
+    __attribute__((cold)) static void TcpServer(const __stringview _address, const __uint16 _port);
 
-    __attribute__((cold)) inline static bool SyncConnect(const __stringview _address, const __uint16 _port);
+    __attribute__((cold)) inline static bool Connect(const __stringview _address, const __uint16 _port);
 
-    __attribute__((cold)) inline static const ClientTcpConnection SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw);
+    __attribute__((cold)) inline static const ClientTcpConnection Connect(const __stringview _address, const __uint16 _port, const bool _throw);
 
-    __attribute__((hot, access(read_only, 1))) inline static __socket SyncAccept(__socket *__restrict__ _sock);
+    __attribute__((hot, access(read_only, 1))) inline static __socket NewRequest(__socket *__restrict__ _sock);
+
+    __attribute__((hot)) inline static __socket NewRequest(void);
 
     __attribute__((hot)) inline static bool Send(const __stringview _buffer) noexcept;
 
     __attribute__((hot, access(read_only, 1))) inline static bool Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept;
 
-    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static TcpIntercept SyncRead(void);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static TcpIntercept Read(void);
 
-    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string SyncStrRead(void);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string Read2Str(void);
 
-     __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string SyncStrRead(__socket *__restrict__ _sock);
+     __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string Read2Str(__socket *__restrict__ _sock);
 
-    __attribute__((hot)) inline static void SyncRead(__string& sink_frame);
+    __attribute__((hot)) inline static void Read(__string& sink_frame);
 
-    __attribute__((hot, access(read_only, 1))) inline static void SyncRead(__socket *__restrict__ _sock, __string& sink_frame);
+    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, __string& sink_frame);
 
-    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept SyncRead(__socket *__restrict__ _sock);
+    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept Read(__socket *__restrict__ _sock);
 
-    __attribute__((hot, access(read_only, 1))) inline static void SyncRead(__socket *__restrict__ _sock, TcpIntercept &dest_obj);
+    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, TcpIntercept &dest_obj);
 
     __attribute__((const, warn_unused_result)) inline static __socket *GetSocket(void) noexcept;
 
@@ -177,14 +179,14 @@ class Socket
 
     __attribute__((cold, warn_unused_result)) inline static const bool IsConnected(void) noexcept;
 
+
     ~Socket();
 
   protected: // protected member functions
-    //__attribute__((cold)) inline static void __SyncConnect(const __stringview &_address, const __uint16 &_port, bool &_r);
     
-    template <typename rT> __attribute__((cold)) inline static void __SyncConnect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw = false);
+    template <typename rT> __attribute__((cold)) inline static void _Connect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw = false);
 
-    __attribute__((hot, access(read_only, 1))) inline static bool __SyncAccept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest);
+    __attribute__((hot, access(read_only, 1))) inline static bool _Accept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest);
 
     __attribute__((cold, warn_unused_result, pure, nothrow)) static const bool _AddressValidate(const __stringview _address, const __uint16 _port);
 
