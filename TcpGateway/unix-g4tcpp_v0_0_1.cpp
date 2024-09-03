@@ -9,9 +9,6 @@ using __self__ = ::TcpInitializer::Socket; // static reference object alias
 
 const decltype(std::string::npos) __noindex = std::string::npos;
 
-
-
-
 /**
  * Initializer socket tcp channel, required both for client and server.
  */
@@ -19,10 +16,6 @@ void TcpInitializer::Socket::Init(void) noexcept
 {
     *__self__::_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 };
-
-
-
-
 
 /**
  * Create Tcp Server Channel on _address and _port
@@ -67,9 +60,6 @@ void TcpInitializer::Socket::CreateTcpServer(const __stringview _address, const 
     }
 };
 
-
-
-
 /**
  * Open Tcp socket connection on local address and _port
  * @param __uint16 port number
@@ -80,9 +70,6 @@ void TcpInitializer::Socket::CreateTcpServer(const __uint16 _port)
     __self__::CreateTcpServer(DEFAULT_IP_ADDRESS, _port);
 };
 
-
-
-
 /**
  * Client Side, connect to server on _address and _port
  * @param __stringview remote address
@@ -92,12 +79,9 @@ void TcpInitializer::Socket::CreateTcpServer(const __uint16 _port)
 bool TcpInitializer::Socket::SyncConnect(const __stringview _address, const __uint16 _port)
 {
     bool _r{false};
-    std::function<void()> exec = 
-    std::thread ().join();
+    std::thread([&]() -> void { __self__::__SyncConnect<bool&>(_address, _port, _r, false); }).join();
     return _r;
 };
-
-
 
 /**
  * Client Side, connect to server on _address and _port
@@ -108,12 +92,9 @@ bool TcpInitializer::Socket::SyncConnect(const __stringview _address, const __ui
 const TcpInitializer::ClientTcpConnection TcpInitializer::Socket::SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw = false)
 {
     TcpInitializer::ClientTcpConnection tcp_new;
-    std::thread(__self__::__SyncConnect, _address, _port, _throw, tcp_new);
+    std::thread([&]() -> void { __self__::__SyncConnect<TcpInitializer::ClientTcpConnection&>(_address, _port, tcp_new, _throw); }).join();
     return tcp_new;
 };
-
-
-
 
 __socket TcpInitializer::Socket::SyncAccept(__socket *__restrict__ _sock)
 {
@@ -122,73 +103,81 @@ __socket TcpInitializer::Socket::SyncAccept(__socket *__restrict__ _sock)
     return sock_digest;
 };
 
-
-
-
 bool TcpInitializer::Socket::Send(const __stringview _buffer) noexcept
 {
-    char buffer[__self__::_buffer_max];
-
-    memcpy(buffer, _buffer.data(), _buffer.length());
-    if (__self__::_socket != nullptr && *__self__::_socket > 0)
-    {
-        return send(*__self__::_socket, buffer, sizeof(buffer), 0) > 0;
-    }
-    return false;
+    return __self__::Send(__self__::_socket.get(), _buffer);
 };
-
-
-
 
 bool TcpInitializer::Socket::Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept
 {
-    if (_sock != nullptr && *_sock > 0)
-    {
-        return send(*_sock, _buffer.data(), _buffer.length(), 0) > 0;
-    }
-    return false;
+    if (_sock == nullptr || *_sock <= 0)
+        return false;
+    return send(*_sock, _buffer.data(), _buffer.length(), 0) > 0;
 };
 
-
-
-
-TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(__socket *__restrict__ _sock)
+TcpInitializer::TcpIntercept TcpInitializer::Socket::SyncRead(void)
 {
     TcpInitializer::TcpIntercept tcp_request;
 
-    if (_sock != nullptr && *_sock > *__self__::_socket)
-    {
-        int tcp_read(0);
-        char tcp_buffer[__self__::_buffer_max];
-
-        while ((tcp_read = read(*_sock, tcp_buffer, sizeof(tcp_buffer))) > 0)
-        {
-            tcp_request.raw_bytes.assign(tcp_buffer);
-            tcp_request.block_size = tcp_request.raw_bytes.length();
-            tcp_request.payload_headers = "header-section";
-        }
-    }
+    __self__::SyncRead(__self__::_socket.get(), tcp_request);
     return tcp_request;
 };
 
-
-
-
-void TcpInitializer::Socket::Read(__socket *__restrict__ _sock, TcpInitializer::TcpIntercept &dest_obj)
+const __string TcpInitializer::Socket::SyncStrRead(void)
 {
-    dest_obj = __self__::Read(_sock);
+    return __self__::SyncRead(__self__::_socket.get()).raw_bytes;
+};
+
+const __string TcpInitializer::Socket::SyncStrRead(__socket *__restrict__ _sock)
+{
+    return __self__::SyncRead(_sock).raw_bytes;
+};
+
+void TcpInitializer::Socket::SyncRead(__string& sink_frame)
+{
+    TcpInitializer::TcpIntercept tcp_request(__self__::SyncRead(__self__::_socket.get()));
+    sink_frame = tcp_request.block_size > 0 ? tcp_request.raw_bytes : "";
 };
 
 
+void TcpInitializer::Socket::SyncRead(__socket *__restrict__ _sock, __string& sink_frame)
+{
+    TcpInitializer::TcpIntercept tcp_request(__self__::SyncRead(_sock));
+    sink_frame = tcp_request.block_size > 0 ? tcp_request.raw_bytes : "";
+};
 
+TcpInitializer::TcpIntercept TcpInitializer::Socket::SyncRead(__socket *__restrict__ _sock)
+{
+    TcpInitializer::TcpIntercept tcp_request;
+    if(_sock == nullptr || *_sock <= 0) throw std::invalid_argument("invalid socket value");
+    std::thread([&]() -> void {
+        if (_sock != nullptr)
+        {
+            int tcp_read(0);
+            char tcp_buffer[__self__::_buffer_max];
+            memset(&tcp_buffer, 0, sizeof(tcp_buffer));
+
+            if ((tcp_read = read(*_sock, tcp_buffer, sizeof(tcp_buffer))) > 0)
+            {
+                tcp_request.raw_bytes = tcp_buffer;
+                tcp_request.block_size = tcp_request.raw_bytes.length();
+                tcp_request.payload_headers = "header-section";
+            }
+        }
+    }).join();
+
+    return tcp_request;
+};
+
+void TcpInitializer::Socket::SyncRead(__socket *__restrict__ _sock, TcpInitializer::TcpIntercept &dest_obj)
+{
+    dest_obj = __self__::SyncRead(_sock);
+};
 
 __socket *TcpInitializer::Socket::GetSocket(void) noexcept
 {
     return __self__::_socket.get();
 };
-
-
-
 
 void TcpInitializer::Socket::Close(__socket __restrict__ *_sock) noexcept
 {
@@ -196,18 +185,12 @@ void TcpInitializer::Socket::Close(__socket __restrict__ *_sock) noexcept
         close(*_sock);
 };
 
-
-
-
 void TcpInitializer::Socket::GarbageCollectorExecute(void) noexcept
 {
     __local_enc.free();
     __self__::Close(__self__::_socket.get());
     __self__::_socket = nullptr;
 };
-
-
-
 
 void TcpInitializer::Socket::SetMaxConnections(const __uint64 max) noexcept
 {
@@ -218,38 +201,7 @@ void TcpInitializer::Socket::SetMaxConnections(const __uint64 max) noexcept
 };
 
 
-
-
-bool TcpInitializer::Socket::__SyncConnect(const __stringview& _address, const __uint16& _port, bool& _r)
-{
-    if (!__self__::_AddressValidate(_address, _port))
-    {
-        throw std::runtime_error(__self__::_ErrorMsgCombine("Conn Addr Eval failure"));
-    }
-    if (__self__::_socket == nullptr || *__self__::_socket <= 0)
-    {
-        __self__::_socket = std::make_unique<__socket>(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
-    }
-    if (__self__::_socket.get() == nullptr)
-    {
-        throw std::runtime_error(__self__::_ErrorMsgCombine("Sock open error"));
-    }
-    struct sockaddr_in srv_addr;
-    srv_addr.sin_family = AF_INET;
-    srv_addr.sin_port = htons(_port);
-    if (inet_pton(AF_INET, _address.data(), &(srv_addr.sin_addr)) < 1)
-    {
-        throw std::runtime_error(__self__::_ErrorMsgCombine("address convert error"));
-    }
-    std::cout << "Connection Socket " << *__self__::_socket << "\n";
-    _r = (connect(*__self__::_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) == 0);
-    return _r;
-};
-
-
-
-
-void TcpInitializer::Socket::__SyncConnect(const __stringview _address, const __uint16 _port, const bool _throw = false, TcpInitializer::ClientTcpConnection& tcp_new)
+template <typename rT> void TcpInitializer::Socket::__SyncConnect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw)
 {
     if (!__self__::_AddressValidate(_address, _port) && _throw)
     {
@@ -264,20 +216,26 @@ void TcpInitializer::Socket::__SyncConnect(const __stringview _address, const __
         throw std::runtime_error(__self__::_ErrorMsgCombine("Sock open error"));
     }
     struct sockaddr_in srv_addr;
+    memset(&srv_addr, 0, sizeof(struct sockaddr_in));
     srv_addr.sin_family = AF_INET;
     srv_addr.sin_port = htons(_port);
+
     if (inet_pton(AF_INET, _address.data(), &(srv_addr.sin_addr)) < 1 && _throw)
     {
         throw std::runtime_error(__self__::_ErrorMsgCombine("address convert error"));
     }
-    std::cout << "Connection Socket " << *__self__::_socket << "\n";
-    tcp_new.state = connect(*__self__::_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) == 0;
-    tcp_new.sock = *__self__::_socket;
+    const bool status(connect(*__self__::_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) == 0);
+    if constexpr (std::is_same_v<rT, TcpInitializer::ClientTcpConnection&>)
+    {
+        _r.state = status;
+        _r.sock = *__self__::_socket;
+    }
+    else if constexpr (std::is_same_v<rT, bool&>)
+    {
+        _r = status;
+    }
     return;
 };
-
-
-
 
 bool TcpInitializer::Socket::__SyncAccept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest)
 {
@@ -293,13 +251,11 @@ bool TcpInitializer::Socket::__SyncAccept(__socket *__restrict__ _sock, __socket
     return *_sock_digest > *_sock;
 };
 
-
-
-
 bool TcpInitializer::Socket::_TcpBind(void)
 {
     if (__self__::_socket != nullptr && *__self__::_socket > 0)
     {
+        memset(__self__::_sock_address.get(), 0, sizeof(struct sockaddr_in));
         __self__::_sock_address->sin_port = htons(__self__::_port);
         __self__::_sock_address->sin_family = AF_INET;
         if (inet_pton(AF_INET, __self__::_ip_address.c_str(), &(__self__::_sock_address->sin_addr)) == 1)
@@ -310,9 +266,6 @@ bool TcpInitializer::Socket::_TcpBind(void)
     return false;
 };
 
-
-
-
 bool TcpInitializer::Socket::_TcpListen(void)
 {
     if (__self__::_socket != nullptr)
@@ -321,9 +274,6 @@ bool TcpInitializer::Socket::_TcpListen(void)
     }
     return false;
 };
-
-
-
 
 const bool TcpInitializer::Socket::_AddressValidate(const __stringview _address, const __uint16 _port)
 {
@@ -338,33 +288,20 @@ const bool TcpInitializer::Socket::_AddressValidate(const __stringview _address,
     return false;
 };
 
-
-
-
 void TcpInitializer::Socket::_ExceptionHandle(const __stringview error) noexcept
 {
     std::cerr << "Error: " << error.data() << "\n";
 };
-
-
-
 
 const __string TcpInitializer::Socket::_ErrorMsgCombine(const __stringview _token) noexcept
 {
     return __string(_token.data(), _token.length()).append(strerror_l(errno, __local_enc.local_x));
 };
 
-
-
-
 void TcpInitializer::Socket::SetVerbose(const bool verbose) noexcept
 {
     __self__::verbose = verbose;
 };
-
-
-
-
 
 template <typename... MT> void TcpInitializer::Socket::Log(MT... msgs) noexcept
 {
@@ -373,10 +310,6 @@ template <typename... MT> void TcpInitializer::Socket::Log(MT... msgs) noexcept
         (std::cout << ... << msgs);
     }
 };
-
-
-
-
 
 void TcpInitializer::Socket::_AddressReuse(void)
 {
@@ -391,17 +324,18 @@ void TcpInitializer::Socket::_AddressReuse(void)
     }
 };
 
-
-
-
-
-bool TcpInitializer::Socket::CanAcceptTcp(void) noexcept {
+bool TcpInitializer::Socket::CanAcceptTcp(void) noexcept
+{
     return __self__::_tcp_count < __self__::_accept_max;
 };
 
+const __uint64& TcpInitializer::Socket::GetSessionCount(void) noexcept {
+    return __self__::_tcp_count;
+};
 
-
-
+const bool TcpInitializer::Socket::IsConnected(void) noexcept {
+    return __self__::_tcp_state == TcpState::CONNECTED && __self__::_socket != nullptr && *__self__::_socket > 0;
+};
 
 TcpInitializer::Socket::~Socket()
 {
