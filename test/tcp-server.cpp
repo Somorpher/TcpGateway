@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 
     Gateway::Init();
 
-    Gateway::TcpServer("192.168.1.77", 3300);
+    Gateway::TcpServer("127.0.0.1", 3300);
 
     while ((new_connection = Gateway::NewRequest()) > 0)
     {
