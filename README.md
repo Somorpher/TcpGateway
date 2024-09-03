@@ -1,2 +1,2 @@
 # TcpGateway
-Unix Data Transmission(TCP) Protocol using unix native socket functions, c++ Utility library.
+Unix c++ data transmission library using native unix socket functions on TCP protocol, thread-safe library.
