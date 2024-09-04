@@ -30,12 +30,12 @@ Creating a TCP Server
 To create a TCP server, use the TcpServer method, providing the desired address and port:
 
 ```cpp
-socket.TcpServer("127.0.0.1", 8080);
+socket.CreateTcpServer("127.0.0.1", 8080);
 ```
 You can also create a server on a default IP address:
 
 ```cpp
-socket.TcpServer(8080);
+socket.CreateTcpServer(8080);
 ```
 Connecting to a Server
 
@@ -64,7 +64,7 @@ Handling New Connections
 To accept new incoming connections, use the NewRequest method:
 
 ```cpp
-__socket newConnection = socket.NewRequest();
+t_sock newConnection = socket.NewRequest();
 ```
 Closing a Connection
 
@@ -93,7 +93,7 @@ The library provides built-in error handling. If an operation fails, an exceptio
 
 ```cpp
 try {
-    socket.TcpServer("127.0.0.1", 8080);
+    socket.CreateTcpServer("127.0.0.1", 8080);
 } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
 }
