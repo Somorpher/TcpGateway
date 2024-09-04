@@ -1,24 +1,35 @@
 #include "unix-g4tcpp_v0_0_1.cpp"
 
-using TcpClient = TcpInitializer::Socket;
+namespace TCP = TcpInitializer;
 
 int main(int argc, char **argv)
 {
-    TcpClient::SetVerbose(true); // log messages during operation execution
+    bool _e = true;
+    TCP::Socket::SetVerbose(true);
+    TCP::Socket::Init();
+    TCP::Socket::Connect("127.0.0.1", 3300, true);
 
-    TcpClient::Init(); // initialize socket pointer and other data
+    std::function<void()> thread_execution_func([&]() -> void {
+        t_string read_new_tcp_block;
+        while(!(read_new_tcp_block = TCP::Socket::Read2Str()).empty()){
+            std::cout << "Received: " << read_new_tcp_block << "\n";
+        }
+        std::cout << "Exited while loop!\n";
+        _e = false;
+    });
 
-    if (TcpClient::Connect("1127.0.0.1", 3300, true).state) // connect sync mode
-    {        
+    std::thread(thread_execution_func).detach();
 
-        TcpClient::Send("message"); // send message
-
-        __string new_msg = TcpClient::Read2Str();
-
-        std::cout << "New Message: " << new_msg << "\n";
+    int j(0);
+    while(++j < 10){
+        TCP::Socket::Send("message from client!");
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-    
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    while(_e){
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    }
+
 
     return EXIT_SUCCESS;
-};
+}
