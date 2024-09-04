@@ -6,7 +6,7 @@ int main(int argc, char **argv)
     TCP::Socket::SetVerbose(true);
     TCP::Socket::SetMaxConnections(100);
     TCP::Socket::Init();
-    TCP::Socket::CreateTcpServer("192.168.1.77", 3300);
+    TCP::Socket::CreateTcpServer("127.0.0.1", 3300);
     t_sock new_tcp;
     std::function<void(t_sock & _s)> exec_thread([&](t_sock &_s) -> void {
         std::thread([&] {
