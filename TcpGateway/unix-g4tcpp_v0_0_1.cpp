@@ -19,11 +19,11 @@ void TcpInitializer::Socket::Init(void) noexcept
 
 /**
  * Create Tcp Server on _address and _port
- * @param __stringview remote address
- * @param __uint16 port number
+ * @param t_stringw remote address
+ * @param t_u16 port number
  * @returns void
  */
-void TcpInitializer::Socket::TcpServer(const __stringview _address, const __uint16 _port)
+void TcpInitializer::Socket::CreateTcpServer(const t_stringw _address, const t_u16 _port)
 {
 
     try
@@ -54,7 +54,7 @@ void TcpInitializer::Socket::TcpServer(const __stringview _address, const __uint
             }
         }
     }
-    catch (const __exception &e)
+    catch (const t_except &e)
     {
         __self__::_ExceptionHandle(e.what());
     }
@@ -62,21 +62,21 @@ void TcpInitializer::Socket::TcpServer(const __stringview _address, const __uint
 
 /**
  * Open Tcp socket connection on local address and _port
- * @param __uint16 port number
+ * @param t_u16 port number
  * @returns void
  */
-void TcpInitializer::Socket::TcpServer(const __uint16 _port)
+void TcpInitializer::Socket::CreateTcpServer(const t_u16 _port)
 {
-    __self__::TcpServer(DEFAULT_IP_ADDRESS, _port);
+    __self__::CreateTcpServer(DEFAULT_IP_ADDRESS, _port);
 };
 
 /**
  * Client Side, connect to server on _address and _port
- * @param __stringview remote address
- * @param __uint16 port to connect
+ * @param t_stringw remote address
+ * @param t_u16 port to connect
  * @returns void
  */
-bool TcpInitializer::Socket::Connect(const __stringview _address, const __uint16 _port)
+bool TcpInitializer::Socket::Connect(const t_stringw _address, const t_u16 _port)
 {
     bool _r{false};
     std::thread([&]() -> void { __self__::_Connect<bool &>(_address, _port, _r, false); }).join();
@@ -85,43 +85,67 @@ bool TcpInitializer::Socket::Connect(const __stringview _address, const __uint16
 
 /**
  * Client Side, connect to server on _address and _port
- * @param __stringview remote address
- * @param __uint16 port to connect
+ * @param t_stringw remote address
+ * @param t_u16 port to connect
  * @returns void
  */
-const TcpInitializer::ClientTcpConnection TcpInitializer::Socket::Connect(const __stringview _address, const __uint16 _port, const bool _throw = false)
+const TcpInitializer::ClientTcpConnection TcpInitializer::Socket::Connect(const t_stringw _address, const t_u16 _port, const bool _throw = false)
 {
     TcpInitializer::ClientTcpConnection tcp_new;
     std::thread([&]() -> void { __self__::_Connect<TcpInitializer::ClientTcpConnection &>(_address, _port, tcp_new, _throw); }).join();
     return tcp_new;
 };
 
-__socket TcpInitializer::Socket::NewRequest(__socket *__restrict__ _sock)
+/**
+ * Handle new TCP requests on socket _sock
+ * @param t_sock* socket pointer, socket to accept requests from
+ * @returns t_sock new tcp socket connection
+ */
+t_sock TcpInitializer::Socket::AcceptTcpRequest(t_sock *__restrict__ _sock)
 {
-    thread_local __socket sock_digest;
+    thread_local t_sock sock_digest;
     std::thread(__self__::_Accept, _sock, &sock_digest).join();
     return sock_digest;
 };
 
-__socket TcpInitializer::Socket::NewRequest(void)
+/**
+ * Handle new TCP requests on internal socket
+ * @returns t_sock new tcp socket connection
+ */
+t_sock TcpInitializer::Socket::AcceptTcpRequest(void)
 {
-    thread_local __socket sock_digest;
+    thread_local t_sock sock_digest;
     std::thread(__self__::_Accept, __self__::_socket.get(), &sock_digest).join();
     return sock_digest;
 };
 
-bool TcpInitializer::Socket::Send(const __stringview _buffer) noexcept
+/**
+ * Handle new TCP requests on internal socket
+ * @param t_stringw buffer to send over tcp connection
+ * @returns bool true if buffer is sent
+ */
+bool TcpInitializer::Socket::Send(const t_stringw _buffer) noexcept
 {
     return __self__::Send(__self__::_socket.get(), _buffer);
 };
 
-bool TcpInitializer::Socket::Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept
+/**
+ * Handle new TCP requests on socket _sock
+ * @param t_sock* socket pointer, send _buffer over _sock connection
+ * @param t_stringw buffer to send over tcp connection
+ * @returns bool true if buffer is sent
+ */
+bool TcpInitializer::Socket::Send(const t_sock *__restrict__ _sock, const t_stringw _buffer) noexcept
 {
     if (_sock == nullptr || *_sock <= 0)
         return false;
     return send(*_sock, _buffer.data(), _buffer.length(), 0) > 0;
 };
 
+/**
+ * Read incoming TCP requests.
+ * @returns TcpInitializer::TcpIntercept end point tcp request interceptor
+ */
 TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(void)
 {
     TcpInitializer::TcpIntercept tcp_request;
@@ -130,29 +154,35 @@ TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(void)
     return tcp_request;
 };
 
-const __string TcpInitializer::Socket::Read2Str(void)
-{
-    return __self__::Read(__self__::_socket.get()).raw_bytes;
-};
-
-const __string TcpInitializer::Socket::Read2Str(__socket *__restrict__ _sock)
-{
-    return __self__::Read(_sock).raw_bytes;
-};
-
-void TcpInitializer::Socket::Read(__string &sink_frame)
+/**
+ * Read incoming TCP request and digest payload into sink_framr string ref obj
+ * @param& reference to string used as target to store result of socket read operation
+ * @returns void
+ */
+void TcpInitializer::Socket::Read(t_string &sink_frame)
 {
     TcpInitializer::TcpIntercept tcp_request(__self__::Read(__self__::_socket.get()));
     sink_frame = tcp_request.block_size > 0 ? tcp_request.raw_bytes : "";
 };
 
-void TcpInitializer::Socket::Read(__socket *__restrict__ _sock, __string &sink_frame)
+/**
+ * Read TCP request from _sock connection
+ * @param t_sock* socket pointer, read requests on this socket
+ * @param t_string store socket request data
+ * @returns void
+ */
+void TcpInitializer::Socket::Read(t_sock *__restrict__ _sock, t_string &sink_frame)
 {
     TcpInitializer::TcpIntercept tcp_request(__self__::Read(_sock));
     sink_frame = tcp_request.block_size > 0 ? tcp_request.raw_bytes : "";
 };
 
-TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(__socket *__restrict__ _sock)
+/**
+ * Read TCP request from _sock connection.
+ * @param t_sock* socket pointer, read requests on this socket
+ * @returns TcpInitializer::TcpIntercept
+ */
+TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(t_sock *__restrict__ _sock)
 {
     TcpInitializer::TcpIntercept tcp_request;
     if (_sock == nullptr || *_sock <= 0)
@@ -175,33 +205,76 @@ TcpInitializer::TcpIntercept TcpInitializer::Socket::Read(__socket *__restrict__
     return tcp_request;
 };
 
-void TcpInitializer::Socket::Read(__socket *__restrict__ _sock, TcpInitializer::TcpIntercept &dest_obj)
+/**
+ * Read TCP requests from _sock connection
+ * @param t_sock* pointer to socket, read data on this socket
+ * @param TcpInitializer::TcpIntercept& store into obj
+ * @returns void
+ */
+void TcpInitializer::Socket::Read(t_sock *__restrict__ _sock, TcpInitializer::TcpIntercept &dest_obj)
 {
     dest_obj = __self__::Read(_sock);
 };
 
-__socket *TcpInitializer::Socket::GetSocket(void) noexcept
+/**
+ * same as Socket::Read() but returns a string containing socket data
+ * @returns t_string socket data received
+ */
+const t_string TcpInitializer::Socket::Read2Str(void)
+{
+    return __self__::Read(__self__::_socket.get()).raw_bytes;
+};
+
+/**
+ * read incoming tcp requests from _sock tcp connection
+ * @param t_sock* pointer to socket used to read request
+ * @returns t_string const string containing received socket data
+ */
+const t_string TcpInitializer::Socket::Read2Str(t_sock *__restrict__ _sock)
+{
+    return __self__::Read(_sock).raw_bytes;
+};
+
+/**
+ * Get Socket instance pointer.
+ * @returns t_sock* pointer to internal socket instance
+ */
+t_sock *TcpInitializer::Socket::GetSocket(void) noexcept
 {
     __self__::_AccessGuard();
     return __self__::_socket.get();
 };
 
-void TcpInitializer::Socket::Close(__socket __restrict__ *_sock) noexcept
+/**
+ * Close _sock connection
+ * @param t_sock* socket to close
+ * @returns void
+ */
+void TcpInitializer::Socket::Close(t_sock __restrict__ *_sock) noexcept
 {
     if (_sock != nullptr)
         close(*_sock);
 };
 
+/**
+ * Garbage collector, no description required.
+ * @returns void
+ */
 void TcpInitializer::Socket::GarbageCollectorExecute(void) noexcept
 {
     __self__::_AccessGuard();
     __local_enc.free();
-    
+
     __self__::Close(__self__::_socket.get());
     __self__::_socket = nullptr;
 };
 
-void TcpInitializer::Socket::SetMaxConnections(const __uint64 max) noexcept
+/**
+ * Set max socket connections allowed
+ * @param t_u64 value
+ * @returns void
+ */
+void TcpInitializer::Socket::SetMaxConnections(const t_u64 max) noexcept
 {
     if (max <= UINT64_MAX)
     {
@@ -209,22 +282,52 @@ void TcpInitializer::Socket::SetMaxConnections(const __uint64 max) noexcept
     }
 };
 
-template <typename rT> void TcpInitializer::Socket::_Connect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw)
+bool TcpInitializer::Socket::CanAcceptTcp(void) noexcept
+{
+    return __self__::_tcp_count < __self__::_accept_max && __self__::SocketState(__self__::_socket.get());
+};
+
+const t_u64 &TcpInitializer::Socket::GetSessionCount(void) noexcept
+{
+    return __self__::_tcp_count;
+};
+
+const bool TcpInitializer::Socket::IsConnected(void) noexcept
+{
+    return (__self__::_tcp_state == TcpState::CONNECTED || __self__::_tcp_state == TcpState::LISTENING) && __self__::_socket != nullptr && *__self__::_socket > 0;
+};
+
+bool TcpInitializer::Socket::SocketState(const t_sock *__restrict__ _sock)
+{
+    if (_sock == nullptr || *_sock < 0)
+        return false;
+    int sock_state_val;
+    socklen_t optlen(sizeof(sock_state_val));
+    if (getsockopt(*_sock, SOL_SOCKET, SO_ERROR, &sock_state_val, &optlen) < 0)
+    {
+        return false;
+    }
+
+    return sock_state_val == 0;
+};
+
+template <typename rT> void TcpInitializer::Socket::_Connect(const t_stringw _address, const t_u16 _port, rT _r, const bool _throw)
 {
     __self__::_AccessGuard();
     if (!__self__::_AddressValidate(_address, _port) && _throw)
     {
         throw std::runtime_error(__self__::_ErrorMsgCombine("Conn Addr Eval failure"));
     }
-    
+
     if (__self__::_socket == nullptr || *__self__::_socket <= 0)
     {
-        __self__::_socket = std::make_unique<__socket>(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
+        __self__::_socket = std::make_unique<t_sock>(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
     }
     if (__self__::_socket.get() == nullptr && _throw)
     {
         throw std::runtime_error(__self__::_ErrorMsgCombine("Sock open error"));
     }
+    __self__::_tcp_state = TcpInitializer::TcpState::OPEN;
     struct sockaddr_in srv_addr;
     memset(&srv_addr, 0, sizeof(struct sockaddr_in));
     srv_addr.sin_family = AF_INET;
@@ -244,10 +347,14 @@ template <typename rT> void TcpInitializer::Socket::_Connect(const __stringview 
     {
         _r = status;
     }
+    if (status)
+    {
+        __self__::_tcp_state = TcpInitializer::TcpState::CONNECTED;
+    }
     return;
 };
 
-bool TcpInitializer::Socket::_Accept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest)
+bool TcpInitializer::Socket::_Accept(t_sock *__restrict__ _sock, t_sock *__restrict__ _sock_digest)
 {
     if (__self__::SocketState(_sock))
     {
@@ -287,7 +394,7 @@ bool TcpInitializer::Socket::_TcpListen(void)
     return false;
 };
 
-const bool TcpInitializer::Socket::_AddressValidate(const __stringview _address, const __uint16 _port)
+const bool TcpInitializer::Socket::_AddressValidate(const t_stringw _address, const t_u16 _port)
 {
     if (_address.find(".") != ::__noindex)
     {
@@ -300,14 +407,14 @@ const bool TcpInitializer::Socket::_AddressValidate(const __stringview _address,
     return false;
 };
 
-void TcpInitializer::Socket::_ExceptionHandle(const __stringview error) noexcept
+void TcpInitializer::Socket::_ExceptionHandle(const t_stringw error) noexcept
 {
     std::cerr << "Error: " << error.data() << "\n";
 };
 
-const __string TcpInitializer::Socket::_ErrorMsgCombine(const __stringview _token) noexcept
+const t_string TcpInitializer::Socket::_ErrorMsgCombine(const t_stringw _token) noexcept
 {
-    return __string(_token.data(), _token.length()).append(strerror_l(errno, __local_enc.local_x));
+    return t_string(_token.data(), _token.length()).append(strerror_l(errno, __local_enc.local_x));
 };
 
 void TcpInitializer::Socket::SetVerbose(const bool verbose) noexcept
@@ -337,35 +444,8 @@ void TcpInitializer::Socket::_AddressReuse(void)
     }
 };
 
-bool TcpInitializer::Socket::CanAcceptTcp(void) noexcept
+void TcpInitializer::Socket::_AccessGuard(void) noexcept
 {
-    return __self__::_tcp_count < __self__::_accept_max && __self__::SocketState(__self__::_socket.get());
-};
-
-const __uint64 &TcpInitializer::Socket::GetSessionCount(void) noexcept
-{
-    return __self__::_tcp_count;
-};
-
-const bool TcpInitializer::Socket::IsConnected(void) noexcept
-{
-    return __self__::_tcp_state == TcpState::CONNECTED && __self__::_socket != nullptr && *__self__::_socket > 0;
-};
-
-bool TcpInitializer::Socket::SocketState(const __socket *__restrict__ _sock)
-{
-    if(_sock == nullptr||*_sock<0) return false;
-    int sock_state_val;
-    socklen_t optlen(sizeof(sock_state_val));
-    if (getsockopt(*_sock, SOL_SOCKET, SO_ERROR, &sock_state_val, &optlen) < 0)
-    {
-        return false;
-    }
-
-    return sock_state_val == 0;
-};
-
-void TcpInitializer::Socket::_AccessGuard(void) noexcept {
     std::unique_lock<decltype(__self__::_mtx)> Lock(__self__::_mtx);
 };
 
