@@ -39,6 +39,7 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <netinet/in.h>
@@ -56,23 +57,21 @@ namespace TcpInitializer
 namespace _t
 {
 
-using __stringview = std::basic_string_view<char>;
-using __string = std::basic_string<char>;
+using t_stringw = std::basic_string_view<char>;
+using t_string = std::basic_string<char>;
+using t_u16 = std::uint16_t;
+using t_u32 = std::uint32_t;
+using t_u64 = std::uint64_t;
+using t_except = std::exception;
+using t_sock = int;
 
-using __uint16 = std::uint16_t;
-using __uint32 = std::uint32_t;
-using __uint64 = std::uint64_t;
-using __exception = std::exception;
+}; // namespace _t
 
-using __socket = int;
-
-#define IP_ADDRESS_REGX_ALLOW __string("^[0-9.]+$")
-#define DEFAULT_IP_ADDRESS __string("127.0.0.1")
+#define IP_ADDRESS_REGX_ALLOW t_string("^[0-9.]+$")
+#define DEFAULT_IP_ADDRESS t_string("127.0.0.1")
 #define DEFAULT_PORT_NUMBER 3300u
 #define DEFAULT_ACCEPT_MAX 100u
 #define DEFAULT_BUFFER_MAX_SIZE 4096u
-
-}; // namespace _t
 
 using namespace _t; // use internally
 
@@ -83,6 +82,11 @@ enum class TcpState
     LISTENING,
     CONNECTED,
     FAILED
+};
+
+enum class TcpConnectionType {
+  PERSISTENT = 0,
+  STATELESS
 };
 
 typedef struct alignas(void *)
@@ -98,13 +102,13 @@ typedef struct alignas(void *)
 
 typedef struct alignas(void *)
 {
-    __string raw_bytes{};
-    __uint64 block_size{};
+    t_string raw_bytes{};
+    t_u64 block_size{};
 } TcpIntercept;
 
 typedef struct alignas(void *)
 {
-    __socket sock{};
+    t_sock sock{};
     bool state{};
 } ClientTcpConnection;
 
@@ -113,14 +117,14 @@ local_encoding __local_enc;
 class Socket
 {
   protected: // protected member variables
-    static std::unique_ptr<__socket> _socket;
+    static std::unique_ptr<t_sock> _socket;
     static std::unique_ptr<struct sockaddr_in> _sock_address;
-    static __string _ip_address;
-    static __uint16 _port;
-    static __uint64 _accept_max;
-    static __uint64 _tcp_count;
-    static __uint64 _buffer_max;
     static TcpState _tcp_state;
+    static t_string _ip_address;
+    static t_u16 _port;
+    static t_u64 _accept_max;
+    static t_u64 _tcp_count;
+    static t_u64 _buffer_max;
     static std::mutex _mtx;
     
 
@@ -133,45 +137,45 @@ class Socket
 
     __attribute__((cold)) inline static void Init(void) noexcept;
 
-    __attribute__((cold)) static void TcpServer(const __uint16 _port);
+    __attribute__((cold)) static void CreateTcpServer(const t_u16 _port);
 
-    __attribute__((cold)) static void TcpServer(const __stringview _address, const __uint16 _port);
+    __attribute__((cold)) static void CreateTcpServer(const t_stringw _address, const t_u16 _port);
 
-    __attribute__((cold)) inline static bool Connect(const __stringview _address, const __uint16 _port);
+    __attribute__((cold)) inline static bool Connect(const t_stringw _address, const t_u16 _port);
 
-    __attribute__((cold)) inline static const ClientTcpConnection Connect(const __stringview _address, const __uint16 _port, const bool _throw);
+    __attribute__((cold)) inline static const ClientTcpConnection Connect(const t_stringw _address, const t_u16 _port, const bool _throw);
 
-    __attribute__((hot, access(read_only, 1))) inline static __socket NewRequest(__socket *__restrict__ _sock);
+    __attribute__((hot, access(read_only, 1))) inline static t_sock AcceptTcpRequest(t_sock *__restrict__ _sock);
 
-    __attribute__((hot)) inline static __socket NewRequest(void);
+    __attribute__((hot)) inline static t_sock AcceptTcpRequest(void);
 
-    __attribute__((hot)) inline static bool Send(const __stringview _buffer) noexcept;
+    __attribute__((hot)) inline static bool Send(const t_stringw _buffer) noexcept;
 
-    __attribute__((hot, access(read_only, 1))) inline static bool Send(const __socket *__restrict__ _sock, const __stringview _buffer) noexcept;
+    __attribute__((hot, access(read_only, 1))) inline static bool Send(const t_sock *__restrict__ _sock, const t_stringw _buffer) noexcept;
 
     __attribute__((hot, warn_unused_result, warn_unused_result)) inline static TcpIntercept Read(void);
 
-    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string Read2Str(void);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const t_string Read2Str(void);
 
-     __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const __string Read2Str(__socket *__restrict__ _sock);
+    __attribute__((hot, warn_unused_result, warn_unused_result)) inline static const t_string Read2Str(t_sock *__restrict__ _sock);
 
-    __attribute__((hot)) inline static void Read(__string& sink_frame);
+    __attribute__((hot)) inline static void Read(t_string& sink_frame);
 
-    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, __string& sink_frame);
+    __attribute__((hot, access(read_only, 1))) inline static void Read(t_sock *__restrict__ _sock, t_string& sink_frame);
 
-    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept Read(__socket *__restrict__ _sock);
+    __attribute__((hot, warn_unused_result, access(read_only, 1), warn_unused_result)) inline static TcpIntercept Read(t_sock *__restrict__ _sock);
 
-    __attribute__((hot, access(read_only, 1))) inline static void Read(__socket *__restrict__ _sock, TcpIntercept &dest_obj);
+    __attribute__((hot, access(read_only, 1))) inline static void Read(t_sock *__restrict__ _sock, TcpIntercept &dest_obj);
 
-    __attribute__((const, warn_unused_result)) inline static __socket *GetSocket(void) noexcept;
+    __attribute__((const, warn_unused_result)) inline static t_sock *GetSocket(void) noexcept;
 
-    __attribute__((cold)) inline static void Close(__socket __restrict__ *_sock) noexcept;
+    __attribute__((cold)) inline static void Close(t_sock __restrict__ *_sock) noexcept;
 
     __attribute__((cold, zero_call_used_regs("all"))) inline static void GarbageCollectorExecute(void) noexcept;
 
     __attribute__((cold)) inline static void SetVerbose(const bool verbose) noexcept;
 
-    __attribute__((cold)) inline static void SetMaxConnections(const __uint64 max) noexcept;
+    __attribute__((cold)) inline static void SetMaxConnections(const t_u64 max) noexcept;
 
     template <typename... MT> __attribute__((hot)) inline static void Log(MT... msgs) noexcept;
 
@@ -181,22 +185,22 @@ class Socket
 
     __attribute__((cold, warn_unused_result)) inline static const bool IsConnected(void) noexcept;
 
-    __attribute__((cold, warn_unused_result, access(read_only, 1))) inline static bool SocketState(const __socket *__restrict__ _sock);
+    __attribute__((cold, warn_unused_result, access(read_only, 1))) inline static bool SocketState(const t_sock *__restrict__ _sock);
 
     
     ~Socket();
 
   protected: // protected member functions
     
-    template <typename rT> __attribute__((cold)) inline static void _Connect(const __stringview _address, const __uint16 _port, rT _r, const bool _throw = false);
+    template <typename rT> __attribute__((cold)) inline static void _Connect(const t_stringw _address, const t_u16 _port, rT _r, const bool _throw = false);
 
-    __attribute__((hot, access(read_only, 1))) inline static bool _Accept(__socket *__restrict__ _sock, __socket *__restrict__ _sock_digest);
+    __attribute__((hot, access(read_only, 1))) inline static bool _Accept(t_sock *__restrict__ _sock, t_sock *__restrict__ _sock_digest);
 
-    __attribute__((cold, warn_unused_result, pure, nothrow)) static const bool _AddressValidate(const __stringview _address, const __uint16 _port);
+    __attribute__((cold, warn_unused_result, pure, nothrow)) static const bool _AddressValidate(const t_stringw _address, const t_u16 _port);
 
-    __attribute__((cold, nothrow)) static void _ExceptionHandle(const __stringview error) noexcept;
+    __attribute__((cold, nothrow)) static void _ExceptionHandle(const t_stringw error) noexcept;
 
-    __attribute__((hot, const, warn_unused_result)) static const __string _ErrorMsgCombine(const __stringview _token) noexcept;
+    __attribute__((hot, const, warn_unused_result)) static const t_string _ErrorMsgCombine(const t_stringw _token) noexcept;
 
     __attribute__((cold, )) inline static bool _TcpBind(void);
 
@@ -214,21 +218,21 @@ class Socket
 
 #endif
 
-std::unique_ptr<TcpInitializer::__socket> TcpInitializer::Socket::_socket = std::make_unique<TcpInitializer::__socket>(-1);
+std::unique_ptr<TcpInitializer::t_sock> TcpInitializer::Socket::_socket = std::make_unique<TcpInitializer::t_sock>(-1);
 
 std::unique_ptr<struct sockaddr_in> TcpInitializer::Socket::_sock_address = std::make_unique<struct sockaddr_in>();
 
-TcpInitializer::__string TcpInitializer::Socket::_ip_address = TcpInitializer::__string(DEFAULT_IP_ADDRESS);
+TcpInitializer::t_string TcpInitializer::Socket::_ip_address = TcpInitializer::t_string(DEFAULT_IP_ADDRESS);
 
-TcpInitializer::__uint16 TcpInitializer::Socket::_port = DEFAULT_PORT_NUMBER;
+TcpInitializer::t_u16 TcpInitializer::Socket::_port = DEFAULT_PORT_NUMBER;
 
 bool TcpInitializer::Socket::verbose = false;
 
-TcpInitializer::__uint64 TcpInitializer::Socket::_accept_max = DEFAULT_ACCEPT_MAX;
+TcpInitializer::t_u64 TcpInitializer::Socket::_accept_max = DEFAULT_ACCEPT_MAX;
 
-TcpInitializer::__uint64 TcpInitializer::Socket::_tcp_count = 0;
+TcpInitializer::t_u64 TcpInitializer::Socket::_tcp_count = 0;
 
-TcpInitializer::__uint64 TcpInitializer::Socket::_buffer_max = DEFAULT_BUFFER_MAX_SIZE;
+TcpInitializer::t_u64 TcpInitializer::Socket::_buffer_max = DEFAULT_BUFFER_MAX_SIZE;
 
 TcpInitializer::TcpState TcpInitializer::Socket::_tcp_state = TcpInitializer::TcpState::NONE;
 
