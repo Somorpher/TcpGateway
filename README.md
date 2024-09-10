@@ -16,7 +16,8 @@ To use the TcpInitializer library, include the header file in your C++ project:
 ```cpp
 #include "TcpGateway/unix-g4tcpp_v0_0_1.hpp"
 ```
-Usage
+### Usage
+
 Initializing a Socket
 
 To initialize a TCP socket, simply call the Init method:
@@ -27,7 +28,7 @@ socket.Init();
 ```
 Creating a TCP Server
 
-To create a TCP server, use the TcpServer method, providing the desired address and port:
+To create a TCP server, use the TcpServer method(after call for Init()) providing the desired address and port:
 
 ```cpp
 socket.CreateTcpServer("127.0.0.1", 8080);
